@@ -1,0 +1,69 @@
+1- Pour ceux qui souhaitent faire de la compilation séparée.
+Vous pouvez vous inspirer du fichier sudoku.asd
+
+Pour compiler et charger le système sudoku, il suffira
+de faire sous Slime:
+--------------------
+; SLIME 2015-02-19
+CL-USER> (asdf::load-system :sudoku)
+sudoku-directory is /Users/idurand/sudoku/ 
+; compiling file "/Users/idurand/sudoku/package.lisp" (written 05 NOV 2015 08:10:07 PM):
+; compiling (IN-PACKAGE #:COMMON-LISP-USER)
+; compiling (DEFPACKAGE #:SUDOKU ...)
+;;;
+; compiling (DEFGENERIC SET-DIGIT ...)
+T
+CL-USER> (asdf::load-system :sudoku)
+T
+--------------------
+La compilation ne se fait que s'il y a eu des modifications.
+
+Les endroits où ASDF cherche les systèmes à compiler sont
+mémorisés dans la variable
+asdf:*centra-registry* (équivalent de la variable PATH pour le Shell).
+
+Par défaut au CREMI, il n'y a que le répertoire vers les systèmes
+installés par quicklisp.
+
+--------------------
+CL-USER> asdf:*central-registry*
+(#P"/opt/local/stow/sbcl-1.1.11-x86-64-linux/lib/sbcl/quicklisp/quicklisp/")    
+--------------------
+
+Il vous faudra rajouter le path vers votre projet en faisant par exemple
+--------------------
+CL-USER> (push #P"/net/cremi/irdurand/sudoku/" asdf:*central-registry*)
+(#P"/net/cremi/irdurand/sudoku/"
+ #P"/opt/local/stow/sbcl-1.1.11-x86-64-linux/lib/sbcl/quicklisp/quicklisp/")    
+--------------------
+
+où vous remplacez /net/cremi/irdurand/sudoku/ par le chemin d'accès
+à votre répertoire qui contient le fichier sudoku.asd
+
+Vous pouvez aussi faire avec le répertoire courant contenu dans la variable
+*default-pathname-defaults* si vous avez lancé Emacs dans le répertoire
+du projet.
+
+--------------------
+CL-USER> asdf:*central-registry*
+(#P"/opt/local/stow/sbcl-1.1.11-x86-64-linux/lib/sbcl/quicklisp/quicklisp/")    
+CL-USER> *default-pathname-defaults*
+#P"/Users/idurand/sudoku/"
+CL-USER> (push *default-pathname-defaults* asdf:*central-registry*)
+(#P"/net/cremi/irdurand/sudoku/"
+ #P"/opt/local/stow/sbcl-1.1.11-x86-64-linux/lib/sbcl/quicklisp/quicklisp/")    
+--------------------
+
+Pour ne pas avoir à faire ceci à chaque fois,
+vous mettez ces expressions dans votre fichier ~/.sbclrc
+elles seront ainsi exécutées à chaque lancement de SBCL.
+
+2- Pour ceux qui souhaitent travailler dans un paquetage,
+Vous pouvez vous inspirer du fichier package.lisp
+et commencer tous vos fichiers .lisp
+par (in-package :sudoku)
+
+3- Pour produire le fichier final correspondant à la stratégie,
+il est conseillé d'avoir un petit script ou Makefile permettant
+de concaténer automatiquement tous les fichiers utiles
+en un seul fichier.
