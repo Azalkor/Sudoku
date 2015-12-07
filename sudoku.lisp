@@ -1,23 +1,40 @@
-(defvar SIZE 3)
-(defvar AREA (* SIZE SIZE))
-(defvar find 1)
-
 ;;init grille
+;(defparameter *grid*
+;  #2A((1 0 0 0 0 4 0 0 5)
+;      (0 0 0 9 5 0 0 8 0)
+;      (0 0 0 0 0 3 0 9 0)
+;      (0 0 5 0 0 2 0 0 4)
+;      (0 0 1 0 6 0 7 0 0)
+;      (7 0 0 3 0 0 2 0 0)
+;      (0 6 0 5 0 0 0 0 0)
+;      (0 8 0 0 1 6 0 0 0)
+;      (5 0 0 2 0 0 0 0 7)))
+
+;(defparameter *grid*
+;  #2A((4 0 0 0)
+;      (0 3 0 0)
+;      (0 0 0 3)
+;      (0 0 4 1)))
+
 (defparameter *grid*
-  #2A((1 0 0 0 0 4 0 0 5)
-      (0 0 0 9 5 0 0 8 0)
-      (0 0 0 0 0 3 0 9 0)
-      (0 0 5 0 0 2 0 0 4)
-      (0 0 1 0 6 0 7 0 0)
-      (7 0 0 3 0 0 2 0 0)
-      (0 6 0 5 0 0 0 0 0)
-      (0 8 0 0 1 6 0 0 0)
-      (5 0 0 2 0 0 0 0 7)))
+  #2A((4 1 3 2)
+      (2 3 1 4)
+      (0 4 2 3)
+      (3 2 4 1)))
+
+
+(defparameter SIZE (truncate (sqrt (array-dimension *grid* 0))))
+(defparameter AREA (* SIZE SIZE))
 
 ;;fonction qui nous affiche la grille
-(defun sudoku() 
-  (format t "   | A B C | D E F | G H I |~C" #\linefeed)
-  (dotimes(tmp (+ (* AREA SIZE) 1))
+(defun sudoku()
+  (format t "   | ")
+  (dotimes (tmp AREA)
+    (if (zerop (mod (+ tmp 1) SIZE))
+	(format t "~D | " (code-char (+ tmp (char-code #\A))))
+	(format t "~D " (code-char (+ tmp (char-code #\A))))))
+  (format t "~C" #\linefeed)
+  (dotimes(tmp (+ 2 (* 2 (+ SIZE 1)) (* 2 AREA)))
     (format t "-"))
   (dotimes (l AREA)
     (format t "~C ~D | " #\linefeed (+ l 1))
@@ -33,22 +50,25 @@
     (if (zerop (mod (+ l 1) SIZE))
 	(progn 
 	  (format t "~C" #\linefeed)
-	  (dotimes (tmp (+ (* AREA SIZE) 1))
+	  (dotimes (tmp (+ 2 (* 2 (+ SIZE 1)) (* 2 AREA)))
 	    (format t "-")))
 	NIL)))
 
-;;On demande au joueur de choisir la ligne la colonne et la valeur d'un case
+;;On demande au joueur de choisir la ligne la colonne et la valeur d'une case
 (defun user-read ()
   (let ((l (progn (princ "ligne (entier) ? ") (read)))
-	(c (progn (princ "colonne (lettre) ? ") (read)))
+	(c (progn (princ "colonne (lettre) ? ") (read-char)))
 	(val (progn (princ "valeur ? ") (read))))
+    (if (and (>= (char-code c) (char-code #\A)) (< (char-code c) (char-code #\a)))
+	(setf c (- (char-code c) (- (char-code #\A) 1))) ;conversion Lettres -> Chiffres
+	(setf c (- (char-code c) (- (char-code #\a) 1))))
     (if (not-correct (- l 1) (- c 1) val)
 	(progn 
 	  (format t "valeur existante ligne et/ou colonne et/ou 3x3~C" #\linefeed)
 	  (user-read))
 	(setf (aref *grid* (- l 1) (- c 1)) val))))
 
-;;On vérifie si la valeur, la ligne et la colonne sont correct
+;;On vérifie si la valeur, la ligne et la colonne sont correctes
 (defun not-correct (l c val)
   (if (or (>= 0 val) (> val AREA) (> 0 l) (> l (- AREA 1)) (> 0 c) (> c (- AREA 1)))
       T
@@ -83,21 +103,32 @@
 			     (T NIL))))))))))
 
 (defun game-over()
-  (dotimes (tmpL 9)
-    (dotimes (tmpC 9)
-      (when (/= (aref *grid* tmpL tmpC) 0)
-	  (dotimes (tmpVal 9)
+  (dotimes (tmpL AREA)
+    (dotimes (tmpC AREA)
+      (when (= (aref *grid* tmpL tmpC) 0)
+	  (dotimes (tmpVal AREA)
 	    (when (not (not-correct tmpL tmpC (+ tmpVal 1)))
 	      (return NIL))
-	    (return-from game-over T)))
-	  )))
+	    (when (= tmpVal (- AREA 1))
+	      (format t "~CGame Over : aucune possibilité restante pour la case (~D-~D) !~C" #\linefeed tmpL tmpC #\linefeed)
+	      (return-from game-over T))))))
+  NIL)
+
+(defun win()
+  (dotimes (tmpL AREA)
+    (dotimes (tmpC AREA)
+      (when (= (aref *grid* tmpL tmpC) 0)
+	(return-from win NIL))
+      ))
   T)
 
 (defun main ()
-  (if (game-over)
-      (format t "perdu !~C" #\linefeed)
-      (progn
-	(sudoku)
-	(format t "~C" #\linefeed)
-	(user-read)
-	(main))))
+  (sudoku)
+  (when (not(game-over))
+    (format t "~C" #\linefeed)
+    (if (not(win))
+	(progn
+	  (user-read)
+	  (main))
+	(format t "Vous avez gagné, bien joué !~C" #\linefeed))))
+  
