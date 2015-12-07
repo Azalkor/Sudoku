@@ -10,17 +10,28 @@
 ;      (0 8 0 0 1 6 0 0 0)
 ;      (5 0 0 2 0 0 0 0 7)))
 
+(defparameter *grid*
+  #2A((7 0 2 0 3 0 0 0 5)
+      (9 0 5 7 0 0 0 0 1)
+      (1 3 0 0 0 8 0 0 0)
+      (0 0 0 5 8 2 9 0 3)
+      (0 0 0 0 0 0 0 0 2)
+      (0 0 0 0 0 0 6 0 7)
+      (0 0 0 0 0 5 0 9 0)
+      (0 6 7 0 0 0 1 0 0)
+      (3 0 9 4 7 0 0 0 0)))
+
 ;(defparameter *grid*
 ;  #2A((4 0 0 0)
 ;      (0 3 0 0)
 ;      (0 0 0 3)
 ;      (0 0 4 1)))
 
-(defparameter *grid*
-  #2A((4 1 3 2)
-      (2 3 1 4)
-      (0 4 2 3)
-      (3 2 4 1)))
+;(defparameter *grid*
+ ; #2A((4 1 3 2)
+  ;    (2 3 1 4)
+   ;   (0 4 2 3)
+    ;  (3 2 4 1)))
 
 
 (defparameter SIZE (truncate (sqrt (array-dimension *grid* 0))))
@@ -66,7 +77,11 @@
 	(progn 
 	  (format t "valeur existante ligne et/ou colonne et/ou 3x3~C" #\linefeed)
 	  (user-read))
-	(setf (aref *grid* (- l 1) (- c 1)) val))))
+	(if (= (aref *grid* (- l 1) (- c 1)) 0)
+	    (progn 
+	      (format t "Case occupée~C" #\linefeed)
+	      (user-read))
+	    (setf (aref *grid* (- l 1) (- c 1)) val)))))
 
 ;;On vérifie si la valeur, la ligne et la colonne sont correctes
 (defun not-correct (l c val)
@@ -132,3 +147,36 @@
 	  (main))
 	(format t "Vous avez gagné, bien joué !~C" #\linefeed))))
   
+(defun random-strategy()
+  (when (not(game-over))
+    (format t "~C" #\linefeed)
+    (if (not(win))
+	(progn	  
+	  (let ((l (random AREA))
+		(c (random AREA))
+		(val (+ (random AREA) 1)))
+	    (format t "l:~D c:~D val:~D ~C" l c val #\linefeed)
+	    (when (not (not-correct l c val))
+	      (setf (aref *grid* l c) val)
+	      (sudoku))
+	    (random-strategy)))
+	(format t "Vous avez gagné, bien joué !~C" #\linefeed))))
+
+(defun int-strategy()
+  (when (not(game-over))
+    (if (not(win))
+	(dotimes (val AREA) 
+	  (dotimes (l AREA)
+	    (let ((possibilities 0)
+		  (lastC 0))
+	      (dotimes (c AREA)
+		(when (zerop (aref *grid* l c))
+		  (when (not (not-correct l c (+ val 1)))
+		    (setf possibilities (+ possibilities 1))
+		    (setf lastC c))))
+		(when (= possibilities 1)
+		  (setf (aref *grid* l lastC) (+ val 1))
+		  (int-strategy)))))
+	(progn
+	  (sudoku)
+	  (format t "~CVous avez gagné, bien joué !~C" #\linefeed #\linefeed)))))
