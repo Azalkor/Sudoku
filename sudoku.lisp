@@ -1,6 +1,7 @@
-;;init grille
+;;Le programme supporte des grilles carrées d'une taille maximale de 9*9
+
 (defparameter *grid*
-  #2A((1 0 0 0 0 4 0 0 5)
+  #2A((1 2 0 0 0 4 0 0 5)
       (0 0 0 9 5 0 0 8 0)
       (0 0 0 0 0 3 0 9 0)
       (0 0 5 0 0 2 0 0 4)
@@ -27,22 +28,16 @@
 ;      (0 0 0 3)
 ;      (0 0 4 1)))
 
-;(defparameter *grid*
- ; #2A((4 1 3 2)
-  ;    (2 3 1 4)
-   ;   (0 4 2 3)
-    ;  (3 2 4 1)))
 
-
-(defparameter SIZE (truncate (sqrt (array-dimension *grid* 0))))
-(defparameter AREA (* SIZE SIZE))
+(defparameter SIZE (truncate (sqrt (array-dimension *grid* 0)))) ; côté d'un bloc
+(defparameter AREA (* SIZE SIZE)) ; côté de la grille
 
 ;;fonction qui nous affiche la grille
 (defun sudoku()
-  (format t "   | ")
+  (format t "~C   | " #\linefeed)
   (dotimes (tmp AREA)
     (if (zerop (mod (+ tmp 1) SIZE))
-	(format t "~D | " (code-char (+ tmp (char-code #\A))))
+	(format t "~D | " (code-char (+ tmp (char-code #\A)))) ; conversion lettres -> chiffres
 	(format t "~D " (code-char (+ tmp (char-code #\A))))))
   (format t "~C" #\linefeed)
   (dotimes(tmp (+ 2 (* 2 (+ SIZE 1)) (* 2 AREA)))
@@ -70,20 +65,22 @@
   (let ((l (progn (princ "ligne (entier) ? ") (read)))
 	(c (progn (princ "colonne (lettre) ? ") (read-char)))
 	(val (progn (princ "valeur ? ") (read))))
-    (if (and (>= (char-code c) (char-code #\A)) (< (char-code c) (char-code #\a)))
-	(setf c (- (char-code c) (- (char-code #\A) 1))) ;conversion Lettres -> Chiffres
+    (if (and (>= (char-code c) (char-code #\A)) (< (char-code c) (char-code #\a))) ; gestion de la casse
+	(setf c (- (char-code c) (- (char-code #\A) 1))) ; conversion lettres -> chiffres
 	(setf c (- (char-code c) (- (char-code #\a) 1))))
     (if (not-correct (- l 1) (- c 1) val)
 	(progn 
 	  (format t "valeur existante ligne et/ou colonne et/ou 3x3~C" #\linefeed)
 	  (user-read))
-	(if (= (aref *grid* (- l 1) (- c 1)) 0)
+	(if (/= (aref *grid* (- l 1) (- c 1)) 0)
 	    (progn 
 	      (format t "Case occupée~C" #\linefeed)
 	      (user-read))
 	    (setf (aref *grid* (- l 1) (- c 1)) val)))))
 
 ;;On vérifie si la valeur, la ligne et la colonne sont correctes
+;les chiffres doivent être dans la bonne tranche de valeurs
+;on applique les trois règles du sudoku (recherche de doublons sur chaque ligne, colonne puis chaque bloc)
 (defun not-correct (l c val)
   (if (or (>= 0 val) (> val AREA) (> 0 l) (> l (- AREA 1)) (> 0 c) (> c (- AREA 1)))
       T
@@ -117,6 +114,7 @@
 			      (return-from not-correct T))
 			     (T NIL))))))))))
 
+;;On vérifie qu'il reste toujours au moins une possibilité pour chaque case à remplir
 (defun game-over()
   (dotimes (tmpL AREA)
     (dotimes (tmpC AREA)
@@ -125,7 +123,7 @@
 	    (when (not (not-correct tmpL tmpC (+ tmpVal 1)))
 	      (return NIL))
 	    (when (= tmpVal (- AREA 1))
-	      (format t "~CGame Over : aucune possibilité restante pour la case (~D-~D) !~C" #\linefeed tmpL tmpC #\linefeed)
+	      (format t "~CGame Over : aucune possibilité restante pour la case ~D~D !~C" #\linefeed (code-char (+ tmpC (char-code #\A))) (+ tmpL 1) #\linefeed)
 	      (return-from game-over T))))))
   NIL)
 
@@ -146,25 +144,29 @@
 	  (user-read)
 	  (main))
 	(format t "Vous avez gagné, bien joué !~C" #\linefeed))))
-  
-(defun random-strategy()
-  (when (not(game-over))
-    (format t "~C" #\linefeed)
-    (if (not(win))
-	(progn	  
-	  (let ((l (random AREA))
-		(c (random AREA))
-		(val (+ (random AREA) 1)))
-	    (format t "l:~D c:~D val:~D ~C" l c val #\linefeed)
-	    (when (not (not-correct l c val))
-	      (setf (aref *grid* l c) val)
-	      (sudoku))
-	    (random-strategy)))
-	(format t "Vous avez gagné, bien joué !~C" #\linefeed))))
 
+;; On ajoute une valeur aléatoire dans une case libre aléatoire
+(defun random-strategy()
+  (if (not(game-over))
+      (if (not(win))
+	  (progn	  
+	    (let ((l (random AREA))
+		  (c (random AREA))
+		  (val (+ (random AREA) 1)))
+	      (when (and (not (not-correct l c val)) (zerop (aref *grid* l c)))
+		(setf (aref *grid* l c) val))
+	      (random-strategy)))
+	  (progn
+	    (sudoku)
+	    (format t "Vous avez gagné, bien joué !~C" #\linefeed)))
+      (sudoku)))
+
+;; On parcours pour chaque valeur, ligne par ligne
 (defun line-strategy()
   (dotimes (val AREA) 
     (dotimes (l AREA)
+      ;la variable possibilities compte le nombre de case qui peuvent contenir la valeur en cours.
+      ;ainsi, on ne peut être sûr de notre case que si possibilities vaut 1 à la fin du parcours.
       (let ((possibilities 0)
 	    (lastC 0))
 	(dotimes (c AREA)
@@ -174,9 +176,10 @@
 	      (setf lastC c))))
 	(when (= possibilities 1)
 	  (setf (aref *grid* l lastC) (+ val 1))
-	  (line-strategy)))))
-  T)
+	  (return-from line-strategy T)))))
+  NIL)
 
+;; On parcours pour chaque valeur, colonne par colonne
 (defun col-strategy()
   (dotimes (val AREA) 
     (dotimes (c AREA)
@@ -189,9 +192,10 @@
 	      (setf lastL l))))
 	(when (= possibilities 1)
 	  (setf (aref *grid* lastL c) (+ val 1))
-	  (col-strategy)))))
-  T)
+	  (return-from col-strategy T)))))
+  NIL)
 
+;; On parcours pour chaque valeur, bloc par bloc
 (defun square-strategy()
   (dotimes (val AREA)
     (dotimes (l AREA)
@@ -202,7 +206,6 @@
 		(lastC 0))
 	    (dotimes (tmpL SIZE)
 	      (dotimes (tmpC SIZE)
-		(format t "l:~D c:~D tmpL:~D tmpC:~D poss:~D ~C" l c tmpL tmpC possibilities #\linefeed)
 		(cond ((< l SIZE)
 		       (cond ((and (< c SIZE) (>= c 0) (zerop (aref *grid* tmpL tmpC)))
 			      (when (not (not-correct tmpL tmpC (+ val 1)))
@@ -255,20 +258,18 @@
 				(setf lastC (+ tmpC (* SIZE 2)))))
 			     (T NIL))))))
 	    (when (= possibilities 1)
-	      (format t "coucou")
 	      (setf (aref *grid* lastL lastC) (+ val 1))
-	      (square-strategy)))))))
-  T)
+	      (return-from square-strategy T)))))))
+  NIL)
 
-
+;; On utilise tout à tour chaque stratégie précédente jusqu'à ce qu'aucune des trois ne trouve un chiffre
 (defun int-strategy()
-  (if (not (and (line-strategy) (col-strategy) (square-strategy)))
-      (if (not(win))
-	  (when (not(game-over))
-	    (int-strategy))
+  (if (not (win))
+      (if (or (line-strategy) (col-strategy) (square-strategy))
+	  (int-strategy)
 	  (progn
 	    (sudoku)
-	    (format t "~CVous avez gagné, bien joué !~C" #\linefeed #\linefeed)))
+	    (format t "~CLa stratégie ne trouve plus de chiffres !~C" #\linefeed #\linefeed)))
       (progn
 	(sudoku)
-	(game-over))))
+	(format t "~CVous avez gagné, bien joué !~C" #\linefeed #\linefeed))))
